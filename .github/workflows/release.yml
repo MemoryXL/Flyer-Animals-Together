@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Prepare Artifacts and Zip
+        run: |
+          mkdir release_artifacts
+          copy target/release/injector.exe release_artifacts/
+          copy target/release/overlay.dll release_artifacts/
+          cd release_artifacts
+          7z a ../YAT.zip *
+        shell: cmd
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: YAT.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
