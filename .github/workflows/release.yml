@@ -27,13 +27,13 @@ jobs:
         run: cargo build --release --verbose
 
       - name: Prepare Artifacts and Zip
+        shell: pwsh
         run: |
-          mkdir release_artifacts
-          copy target/release/injector.exe release_artifacts/
-          copy target/release/overlay.dll release_artifacts/
-          cd release_artifacts
+          New-Item -ItemType Directory -Force -Path release_artifacts
+          Copy-Item -Path "target/release/injector.exe" -Destination "release_artifacts/"
+          Copy-Item -Path "target/release/overlay.dll" -Destination "release_artifacts/"
+          Set-Location release_artifacts
           7z a ../YAT.zip *
-        shell: cmd
 
       - name: Release
         uses: softprops/action-gh-release@v2
