@@ -9,6 +9,9 @@ use windows::Win32::System::Threading::GetCurrentProcessId;
 mod memory;
 use memory::Memory;
 
+const VERSION: &str = "v1.0.1";
+const GITHUB_REPO: &str = "https://github.com/MemoryXL/Flyer-Animals-Together";
+
 // Struct to hold notification data
 struct Notification {
     message: String,
@@ -322,8 +325,8 @@ impl ImguiRenderLoop for Overlay {
 
         // Render Cheat GUI
         if self.show_gui {
-            ui.window("FAT (Flyer Animals Together)")
-                .size([400.0, 450.0], Condition::FirstUseEver)
+            ui.window(&format!("FAT (Flyer Animals Together) {}", VERSION))
+                .size([400.0, 480.0], Condition::FirstUseEver)
                 .build(|| {
                     ui.text("Press RShift to close");
                     ui.checkbox("Enable Notifications", &mut self.notifications_enabled);
@@ -379,6 +382,9 @@ impl ImguiRenderLoop for Overlay {
                          self.time_val = t;
                          unsafe { self.write_value(2, self.time_val, false); }
                     }
+                    
+                    ui.separator();
+                    ui.text(GITHUB_REPO);
                 });
         }
     }
