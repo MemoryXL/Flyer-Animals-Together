@@ -31,7 +31,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release_artifacts
           Copy-Item -Path "target/release/injector.exe" -Destination "release_artifacts/"
-          Copy-Item -Path "target/release/overlay.dll" -Destination "release_artifacts/"
+          Copy-Item -Path "target/release/tool.dll" -Destination "release_artifacts/"
           Set-Location release_artifacts
           7z a ../YAT.zip *
 
