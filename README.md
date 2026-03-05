@@ -27,11 +27,11 @@ cargo build --release
 
 ### Run from Source
 1. Start the game "Climber Animals: Together".
-2. Run the injector:
+2. Run the following command in the project root:
    ```bash
-   cargo run --bin injector --release
+   cargo build --release
    ```
-   Or run the executable directly:
+2. Run the injector:
    ```bash
    ./target/release/injector.exe
    ```

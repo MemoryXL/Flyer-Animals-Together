@@ -47,7 +47,7 @@ fn main() {
             println!("Found process. Injecting...");
             match proc.inject(dll_path) {
                 Ok(_) => {
-                    println!("Injection successful! Check the game window for the overlay.");
+                    println!("Injection successful!");
                     println!("Press ENTER to exit...");
                     let _ = io::stdin().read(&mut [0u8]).unwrap();
                 },
