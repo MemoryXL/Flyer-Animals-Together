@@ -44,6 +44,7 @@ pub struct Tool {
     // Key binding state
     waiting_for_key_up: bool,
     waiting_for_key_down: bool,
+    keys_pressed_before_binding: Vec<i32>,
 
     // Key states
     was_up_pressed: bool,
@@ -77,6 +78,7 @@ impl Default for Tool {
             key_y_velocity_down: config.key_y_velocity_down,
             waiting_for_key_up: false,
             waiting_for_key_down: false,
+            keys_pressed_before_binding: Vec::new(),
             was_up_pressed: false,
             was_down_pressed: false,
             unity_player_base: None,
@@ -247,37 +249,57 @@ impl ImguiRenderLoop for Tool {
                     }
                 }
 
+                // Key binding logic - always check when waiting for binding
+                if self.waiting_for_key_up {
+                    // First, wait for all previously pressed keys to be released
+                    let all_released = self.keys_pressed_before_binding.iter().all(|&vk| {
+                        (GetAsyncKeyState(vk) as u16 & 0x8000) == 0
+                    });
+                    
+                    if all_released {
+                        // Now look for a newly pressed key
+                        for vk in 1..255 {
+                            if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                // Avoid binding modifier keys alone, or RShift/ESC/LMB
+                                if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
+                                    self.key_y_velocity_up = vk;
+                                    self.waiting_for_key_up = false;
+                                    self.keys_pressed_before_binding.clear();
+                                    self.save_config();
+                                    self.add_notification(&format!("Bound UP action to {}", Self::get_key_name(vk)));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else if self.waiting_for_key_down {
+                    // First, wait for all previously pressed keys to be released
+                    let all_released = self.keys_pressed_before_binding.iter().all(|&vk| {
+                        (GetAsyncKeyState(vk) as u16 & 0x8000) == 0
+                    });
+                    
+                    if all_released {
+                        // Now look for a newly pressed key
+                        for vk in 1..255 {
+                            if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
+                                    self.key_y_velocity_down = vk;
+                                    self.waiting_for_key_down = false;
+                                    self.keys_pressed_before_binding.clear();
+                                    self.save_config();
+                                    self.add_notification(&format!("Bound DOWN action to {}", Self::get_key_name(vk)));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Only process hotkeys if ImGui is not capturing input
                 if !ui.io().want_capture_keyboard && !ui.io().want_capture_mouse {
-                    // Keyboard hotkeys for Y-axis Velocity
-                    // Check if waiting for binding
-                    if self.waiting_for_key_up {
-                        for vk in 1..255 {
-                             if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
-                                 // Avoid binding modifier keys alone if possible, or RShift/ESC/LMB
-                                 if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
-                                     self.key_y_velocity_up = vk;
-                                     self.waiting_for_key_up = false;
-                                     self.save_config();
-                                     self.add_notification(&format!("Bound UP action to {}", Self::get_key_name(vk)));
-                                     break;
-                                 }
-                             }
-                        }
-                    } else if self.waiting_for_key_down {
-                        for vk in 1..255 {
-                             if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
-                                 if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
-                                     self.key_y_velocity_down = vk;
-                                     self.waiting_for_key_down = false;
-                                     self.save_config();
-                                     self.add_notification(&format!("Bound DOWN action to {}", Self::get_key_name(vk)));
-                                     break;
-                                 }
-                             }
-                        }
-                    } else {
-                        // Normal operation
+                    // Normal operation - only if not waiting for binding
+                    if !self.waiting_for_key_up && !self.waiting_for_key_down {
+                        // Keyboard hotkeys for Y-axis Velocity
                         let up_pressed = (GetAsyncKeyState(self.key_y_velocity_up) as u16 & 0x8000) != 0;
                         if up_pressed {
                             let silent = self.was_up_pressed;
@@ -294,7 +316,6 @@ impl ImguiRenderLoop for Tool {
                     }
                 }
             }
-            
             // Time locking (always active if enabled, regardless of focus?)
             // Usually trainers work even in background, but prompt implies user interaction.
             // Let's keep it active.
@@ -363,6 +384,15 @@ impl ImguiRenderLoop for Tool {
                         
                         let up_label = if self.waiting_for_key_up { "Press any key..." } else { "Bind Key" };
                         if ui.button(&format!("{}##Up", up_label)) {
+                            // Capture all currently pressed keys
+                            self.keys_pressed_before_binding.clear();
+                            unsafe {
+                                for vk in 1..255 {
+                                    if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                        self.keys_pressed_before_binding.push(vk);
+                                    }
+                                }
+                            }
                             self.waiting_for_key_up = true;
                             self.waiting_for_key_down = false;
                         }
@@ -381,6 +411,15 @@ impl ImguiRenderLoop for Tool {
                         
                         let down_label = if self.waiting_for_key_down { "Press any key..." } else { "Bind Key" };
                         if ui.button(&format!("{}##Down", down_label)) {
+                            // Capture all currently pressed keys
+                            self.keys_pressed_before_binding.clear();
+                            unsafe {
+                                for vk in 1..255 {
+                                    if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                        self.keys_pressed_before_binding.push(vk);
+                                    }
+                                }
+                            }
                             self.waiting_for_key_down = true;
                             self.waiting_for_key_up = false;
                         }

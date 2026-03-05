@@ -16,7 +16,7 @@ impl Memory {
     }
 
     /// Checks if a memory address is readable.
-    pub unsafe fn is_readable(addr: usize, size: usize) -> bool {
+    pub unsafe fn is_readable(addr: usize, _size: usize) -> bool {
         if addr == 0 { return false; }
 
         let mut mbi: MEMORY_BASIC_INFORMATION = std::mem::zeroed();

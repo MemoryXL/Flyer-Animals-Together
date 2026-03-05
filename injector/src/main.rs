@@ -31,7 +31,6 @@ fn is_elevated() -> bool {
 
 fn request_admin_restart() {
     use std::process::Command;
-    use std::os::windows::process::CommandExt;
 
     let current_exe = env::current_exe().unwrap();
     let _ = Command::new("powershell")
