@@ -115,11 +115,9 @@ impl Overlay {
         self.update_bases();
 
         // Height
-        if let Some(base) = self.unity_player_base {
-            // Offsets from XML (reversed): 800, 140, 28, 0, 0, 20, 120
-            // Chain: Base -> 120 -> 20 -> 0 -> 0 -> 28 -> 140 -> 800
-            let offsets = [0x120, 0x20, 0x0, 0x0, 0x28, 0x140, 0x800];
-            if let Some(addr) = Memory::get_pointer_address(base, 0x01A9F230, &offsets) {
+        if let Some(base) = self.game_assembly_base {
+            let offsets = [0xB8, 0x18, 0x50, 0x20, 0x1C0];
+            if let Some(addr) = Memory::get_pointer_address(base, 0x023D5308, &offsets) {
                 if let Some(val) = Memory::read::<f32>(addr) {
                     self.height_val = val;
                 }
@@ -128,10 +126,8 @@ impl Overlay {
 
         // Y-axis Velocity
         if let Some(base) = self.game_assembly_base {
-            // Offsets from XML (reversed): 708, 220, 60, 30, 48, 6A0, 40
-            // Chain: Base -> 40 -> 6A0 -> 48 -> 30 -> 60 -> 220 -> 708
-            let offsets = [0x40, 0x6A0, 0x48, 0x30, 0x60, 0x220, 0x708];
-            if let Some(addr) = Memory::get_pointer_address(base, 0x0254BF18, &offsets) {
+            let offsets = [0xB8, 0x18, 0x50, 0x20, 0xC8];
+            if let Some(addr) = Memory::get_pointer_address(base, 0x023D5308, &offsets) {
                 if let Some(val) = Memory::read::<f32>(addr) {
                     self.y_velocity_val = val;
                 }
@@ -177,17 +173,17 @@ impl Overlay {
 
         match id {
             0 => { // Height
-                if let Some(base) = self.unity_player_base {
-                    let offsets = [0x120, 0x20, 0x0, 0x0, 0x28, 0x140, 0x800];
-                    if let Some(addr) = Memory::get_pointer_address(base, 0x01A9F230, &offsets) {
+                if let Some(base) = self.game_assembly_base {
+                    let offsets = [0xB8, 0x18, 0x50, 0x20, 0x1C0];
+                    if let Some(addr) = Memory::get_pointer_address(base, 0x023D5308, &offsets) {
                         success = Memory::write::<f32>(addr, value);
                     }
                 }
             },
             1 => { // Y-axis Velocity
                 if let Some(base) = self.game_assembly_base {
-                    let offsets = [0x40, 0x6A0, 0x48, 0x30, 0x60, 0x220, 0x708];
-                    if let Some(addr) = Memory::get_pointer_address(base, 0x0254BF18, &offsets) {
+                    let offsets = [0xB8, 0x18, 0x50, 0x20, 0xC8];
+                    if let Some(addr) = Memory::get_pointer_address(base, 0x023D5308, &offsets) {
                         success = Memory::write::<f32>(addr, value);
                     }
                 }
