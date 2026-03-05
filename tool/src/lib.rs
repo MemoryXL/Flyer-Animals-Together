@@ -11,7 +11,7 @@ mod config;
 use memory::Memory;
 use config::Config;
 
-const VERSION: &str = "v1.0.1";
+const VERSION: &str = "v1.1.0";
 const GITHUB_REPO: &str = "https://github.com/MemoryXL/Flyer-Animals-Together";
 
 // Struct to hold notification data
