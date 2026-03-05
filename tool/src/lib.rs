@@ -18,8 +18,8 @@ struct Notification {
     created_at: Instant,
 }
 
-// Struct to manage the overlay state
-pub struct Overlay {
+// Struct to manage the tool state
+pub struct Tool {
     notifications: Vec<Notification>,
     show_gui: bool,
     last_toggle_time: Instant,
@@ -52,12 +52,12 @@ pub struct Overlay {
     game_assembly_base: Option<usize>,
 }
 
-impl Default for Overlay {
+impl Default for Tool {
     fn default() -> Self {
         Self {
             notifications: vec![
                 Notification {
-                    message: "Overlay injected successfully!".to_string(),
+                    message: "Tool injected successfully!".to_string(),
                     created_at: Instant::now(),
                 }
             ],
@@ -82,7 +82,7 @@ impl Default for Overlay {
     }
 }
 
-impl Overlay {
+impl Tool {
     fn add_notification(&mut self, message: &str) {
         if !self.notifications_enabled { return; }
         
@@ -207,7 +207,7 @@ impl Overlay {
     }
 }
 
-impl ImguiRenderLoop for Overlay {
+impl ImguiRenderLoop for Tool {
     fn render(&mut self, ui: &mut Ui) {
         unsafe {
             // Check focus
@@ -386,4 +386,4 @@ impl ImguiRenderLoop for Overlay {
     }
 }
 
-hudhook::hudhook!(ImguiDx11Hooks, Overlay::default());
+hudhook::hudhook!(ImguiDx11Hooks, Tool::default());

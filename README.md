@@ -1,9 +1,6 @@
 # Flyer Animals Together
 
-This project implements a Rust-based overlay for "Climber Animals: Together".
-It consists of two parts:
-1. `overlay`: A DLL that hooks into the game's rendering loop (DirectX 11) to draw a notification box.
-2. `injector`: A command-line tool to inject the DLL into the running game process.
+FAT (Flyer Animals Together) is a tool for Climber Animals: Together
 
 ## Prerequisites
 - Rust (installed via rustup)
@@ -23,7 +20,7 @@ cargo build --release
 3. Extract the zip file.
 4. Start the game "Climber Animals: Together".
 5. Run `injector.exe`.
-6. Click `RShift` to toggle the overlay.
+6. Click `RShift` to toggle the GUI.
 
 ### Run from Source
 1. Start the game "Climber Animals: Together".

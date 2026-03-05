@@ -5,7 +5,7 @@ use std::io::{self, Read};
 
 fn main() {
     let process_name = "Climber Animals Together.exe";
-    let dll_name = "overlay.dll";
+    let dll_name = "tool.dll";
 
     println!("Looking for process: {}", process_name);
 
@@ -16,8 +16,8 @@ fn main() {
 
     if !dll_path.exists() {
         // Try common cargo build locations relative to current dir
-        let debug_path = PathBuf::from("target/debug/overlay.dll");
-        let release_path = PathBuf::from("target/release/overlay.dll");
+        let debug_path = PathBuf::from("target/debug/tool.dll");
+        let release_path = PathBuf::from("target/release/tool.dll");
         
         if debug_path.exists() {
             dll_path = debug_path;
