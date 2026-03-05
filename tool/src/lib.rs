@@ -247,48 +247,51 @@ impl ImguiRenderLoop for Tool {
                     }
                 }
 
-                // Keyboard hotkeys for Y-axis Velocity
-                // Check if waiting for binding
-                if self.waiting_for_key_up {
-                    for vk in 1..255 {
-                         if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
-                             // Avoid binding modifier keys alone if possible, or RShift/ESC/LMB
-                             if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
-                                 self.key_y_velocity_up = vk;
-                                 self.waiting_for_key_up = false;
-                                 self.save_config();
-                                 self.add_notification(&format!("Bound UP action to {}", Self::get_key_name(vk)));
-                                 break;
+                // Only process hotkeys if ImGui is not capturing keyboard input
+                if !ui.io().want_capture_keyboard {
+                    // Keyboard hotkeys for Y-axis Velocity
+                    // Check if waiting for binding
+                    if self.waiting_for_key_up {
+                        for vk in 1..255 {
+                             if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                 // Avoid binding modifier keys alone if possible, or RShift/ESC/LMB
+                                 if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
+                                     self.key_y_velocity_up = vk;
+                                     self.waiting_for_key_up = false;
+                                     self.save_config();
+                                     self.add_notification(&format!("Bound UP action to {}", Self::get_key_name(vk)));
+                                     break;
+                                 }
                              }
-                         }
-                    }
-                } else if self.waiting_for_key_down {
-                    for vk in 1..255 {
-                         if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
-                             if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
-                                 self.key_y_velocity_down = vk;
-                                 self.waiting_for_key_down = false;
-                                 self.save_config();
-                                 self.add_notification(&format!("Bound DOWN action to {}", Self::get_key_name(vk)));
-                                 break;
+                        }
+                    } else if self.waiting_for_key_down {
+                        for vk in 1..255 {
+                             if (GetAsyncKeyState(vk) as u16 & 0x8000) != 0 {
+                                 if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
+                                     self.key_y_velocity_down = vk;
+                                     self.waiting_for_key_down = false;
+                                     self.save_config();
+                                     self.add_notification(&format!("Bound DOWN action to {}", Self::get_key_name(vk)));
+                                     break;
+                                 }
                              }
-                         }
-                    }
-                } else {
-                    // Normal operation
-                    let up_pressed = (GetAsyncKeyState(self.key_y_velocity_up) as u16 & 0x8000) != 0;
-                    if up_pressed {
-                        let silent = self.was_up_pressed;
-                        self.write_value(1, self.y_velocity_up_val, silent);
-                    }
-                    self.was_up_pressed = up_pressed;
+                        }
+                    } else {
+                        // Normal operation
+                        let up_pressed = (GetAsyncKeyState(self.key_y_velocity_up) as u16 & 0x8000) != 0;
+                        if up_pressed {
+                            let silent = self.was_up_pressed;
+                            self.write_value(1, self.y_velocity_up_val, silent);
+                        }
+                        self.was_up_pressed = up_pressed;
 
-                    let down_pressed = (GetAsyncKeyState(self.key_y_velocity_down) as u16 & 0x8000) != 0;
-                    if down_pressed {
-                        let silent = self.was_down_pressed;
-                        self.write_value(1, self.y_velocity_down_val, silent);
+                        let down_pressed = (GetAsyncKeyState(self.key_y_velocity_down) as u16 & 0x8000) != 0;
+                        if down_pressed {
+                            let silent = self.was_down_pressed;
+                            self.write_value(1, self.y_velocity_down_val, silent);
+                        }
+                        self.was_down_pressed = down_pressed;
                     }
-                    self.was_down_pressed = down_pressed;
                 }
             }
             
