@@ -2,20 +2,64 @@ use hudhook::inject::Process;
 use std::env;
 use std::path::PathBuf;
 use std::io::{self, Read};
+use std::thread;
+use std::time::Duration;
+use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+use windows::Win32::Foundation::HANDLE;
+use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+
+fn is_elevated() -> bool {
+    unsafe {
+        let mut token_handle = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token_handle).is_err() {
+            return false;
+        }
+
+        let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut return_length = 0;
+        let result = GetTokenInformation(
+            token_handle,
+            TokenElevation,
+            Some(&mut elevation as *mut _ as *mut _),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut return_length,
+        );
+
+        result.is_ok() && elevation.TokenIsElevated != 0
+    }
+}
+
+fn request_admin_restart() {
+    use std::process::Command;
+    use std::os::windows::process::CommandExt;
+
+    let current_exe = env::current_exe().unwrap();
+    let _ = Command::new("powershell")
+        .args([
+            "-Command",
+            &format!("Start-Process '{}' -Verb RunAs", current_exe.display()),
+        ])
+        .status();
+}
 
 fn main() {
+    if !is_elevated() {
+        println!("This injector requires administrator privileges.");
+        println!("Requesting administrator privileges...");
+        request_admin_restart();
+        return;
+    }
+
     let process_name = "Climber Animals Together.exe";
     let dll_name = "tool.dll";
 
     println!("Looking for process: {}", process_name);
 
-    // Try to find the DLL
     let mut dll_path = env::current_exe().unwrap();
-    dll_path.pop(); // remove injector.exe
+    dll_path.pop();
     dll_path.push(dll_name);
 
     if !dll_path.exists() {
-        // Try common cargo build locations relative to current dir
         let debug_path = PathBuf::from("target/debug/tool.dll");
         let release_path = PathBuf::from("target/release/tool.dll");
         
@@ -28,6 +72,8 @@ fn main() {
 
     if !dll_path.exists() {
         eprintln!("Error: Could not find '{}'. Make sure to build the overlay first.", dll_name);
+        println!("Press ENTER to exit...");
+        let _ = io::stdin().read(&mut [0u8]).unwrap();
         return;
     }
 
@@ -35,28 +81,37 @@ fn main() {
         Ok(path) => path,
         Err(e) => {
             eprintln!("Error resolving DLL path: {}", e);
+            println!("Press ENTER to exit...");
+            let _ = io::stdin().read(&mut [0u8]).unwrap();
             return;
         }
     };
 
     println!("Found DLL at: {:?}", dll_path);
 
-    // Inject
-    match Process::by_name(process_name) {
-        Ok(proc) => {
-            println!("Found process. Injecting...");
-            match proc.inject(dll_path) {
-                Ok(_) => {
-                    println!("Injection successful!");
-                    println!("Press ENTER to exit...");
-                    let _ = io::stdin().read(&mut [0u8]).unwrap();
-                },
-                Err(e) => eprintln!("Injection failed: {:?}", e),
+    loop {
+        match Process::by_name(process_name) {
+            Ok(proc) => {
+                println!("Found process. Injecting...");
+                match proc.inject(dll_path.clone()) {
+                    Ok(_) => {
+                        println!("Injection successful!");
+                        println!("Auto-closing in 15 seconds...");
+                        thread::sleep(Duration::from_secs(15));
+                        return;
+                    },
+                    Err(e) => {
+                        eprintln!("Injection failed: {:?}", e);
+                        println!("Press ENTER to exit...");
+                        let _ = io::stdin().read(&mut [0u8]).unwrap();
+                        return;
+                    }
+                }
+            },
+            Err(_) => {
+                println!("Game not running. Waiting for game to start...");
+                thread::sleep(Duration::from_secs(2));
             }
-        },
-        Err(e) => {
-            eprintln!("Error finding process '{}': {:?}", process_name, e);
-            eprintln!("Please ensure the game is running before running the injector.");
         }
     }
 }
