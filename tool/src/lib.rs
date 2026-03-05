@@ -247,8 +247,8 @@ impl ImguiRenderLoop for Tool {
                     }
                 }
 
-                // Only process hotkeys if ImGui is not capturing keyboard input
-                if !ui.io().want_capture_keyboard {
+                // Only process hotkeys if ImGui is not capturing input
+                if !ui.io().want_capture_keyboard && !ui.io().want_capture_mouse {
                     // Keyboard hotkeys for Y-axis Velocity
                     // Check if waiting for binding
                     if self.waiting_for_key_up {
@@ -343,71 +343,89 @@ impl ImguiRenderLoop for Tool {
         // Render Cheat GUI
         if self.show_gui {
             ui.window(&format!("FAT (Flyer Animals Together) {}", VERSION))
-                .size([400.0, 480.0], Condition::FirstUseEver)
+                .size([420.0, 520.0], Condition::FirstUseEver)
                 .build(|| {
                     ui.text("Press RShift to close");
-                    if ui.checkbox("Enable Notifications", &mut self.notifications_enabled) {
-                        self.save_config();
-                    }
                     ui.separator();
 
-                    ui.text("Hotkeys Configuration:");
-                    
-                    // UP Key Binding
-                    let up_label = if self.waiting_for_key_up { "Press any key..." } else { "Bind" };
-                    if ui.button(&format!("{}##Up", up_label)) {
-                        self.waiting_for_key_up = true;
-                        self.waiting_for_key_down = false; // Cancel other
-                    }
-                    ui.same_line();
-                    ui.text(&format!("UP Action Key: {}", Self::get_key_name(self.key_y_velocity_up)));
-                    
-                    if ui.input_float("UP Action Value", &mut self.y_velocity_up_val).build() {
-                        self.save_config();
-                    }
-                    
-                    // DOWN Key Binding
-                    let down_label = if self.waiting_for_key_down { "Press any key..." } else { "Bind" };
-                    if ui.button(&format!("{}##Down", down_label)) {
-                        self.waiting_for_key_down = true;
-                        self.waiting_for_key_up = false; // Cancel other
-                    }
-                    ui.same_line();
-                    ui.text(&format!("DOWN Action Key: {}", Self::get_key_name(self.key_y_velocity_down)));
-                    
-                    if ui.input_float("DOWN Action Value", &mut self.y_velocity_down_val).build() {
-                        self.save_config();
-                    }
-                    
-                    ui.separator();
-
-                    // Time (Editable with Lock)
-                    let mut t = self.time_val;
-                    // Note: ui.input_float returns true ONLY when value changed and enter pressed/focus lost
-                    // BUT it updates the mutable reference every frame if user is typing.
-                    // To prevent auto-set, we only write when `build()` returns true.
-                    if ui.input_float("Time (seconds)", &mut t).build() {
-                        self.time_val = t;
-                        unsafe { self.write_value(2, t, false); }
-                    }
-                    
-                    ui.same_line();
-                    if ui.checkbox("Lock Time", &mut self.time_locked) {
-                        if self.time_locked {
-                            // When locking, ensure we lock current value
-                             self.time_val = t;
-                             self.add_notification("Time Locked");
+                    // General Settings Section
+                    if ui.collapsing_header("General Settings", hudhook::imgui::TreeNodeFlags::DEFAULT_OPEN) {
+                        if ui.checkbox("Enable Notifications", &mut self.notifications_enabled) {
+                            self.save_config();
                         }
+                        ui.new_line();
                     }
-                    
-                    ui.same_line();
-                    if ui.button("Set##T") {
-                         self.time_val = t;
-                         unsafe { self.write_value(2, self.time_val, false); }
+
+                    // Hotkeys Configuration Section
+                    if ui.collapsing_header("Hotkeys Configuration", hudhook::imgui::TreeNodeFlags::DEFAULT_OPEN) {
+                        ui.text("UP Action:");
+                        ui.indent();
+                        
+                        let up_label = if self.waiting_for_key_up { "Press any key..." } else { "Bind Key" };
+                        if ui.button(&format!("{}##Up", up_label)) {
+                            self.waiting_for_key_up = true;
+                            self.waiting_for_key_down = false;
+                        }
+                        ui.same_line();
+                        ui.text(&format!("Current: {}", Self::get_key_name(self.key_y_velocity_up)));
+                        
+                        if ui.input_float("UP Value", &mut self.y_velocity_up_val).build() {
+                            self.save_config();
+                        }
+                        ui.unindent();
+                        
+                        ui.separator();
+                        
+                        ui.text("DOWN Action:");
+                        ui.indent();
+                        
+                        let down_label = if self.waiting_for_key_down { "Press any key..." } else { "Bind Key" };
+                        if ui.button(&format!("{}##Down", down_label)) {
+                            self.waiting_for_key_down = true;
+                            self.waiting_for_key_up = false;
+                        }
+                        ui.same_line();
+                        ui.text(&format!("Current: {}", Self::get_key_name(self.key_y_velocity_down)));
+                        
+                        if ui.input_float("DOWN Value", &mut self.y_velocity_down_val).build() {
+                            self.save_config();
+                        }
+                        ui.unindent();
+                        
+                        ui.new_line();
                     }
-                    
-                    ui.separator();
-                    ui.text(GITHUB_REPO);
+
+                    // Time Control Section
+                    if ui.collapsing_header("Time Control", hudhook::imgui::TreeNodeFlags::DEFAULT_OPEN) {
+                        ui.text("Current Time:");
+                        ui.indent();
+                        
+                        let mut t = self.time_val;
+                        if ui.input_float("Time (seconds)", &mut t).build() {
+                            self.time_val = t;
+                            unsafe { self.write_value(2, t, false); }
+                        }
+                        
+                        ui.checkbox("Lock Time", &mut self.time_locked);
+                        if self.time_locked {
+                            self.time_val = t;
+                        }
+                        
+                        if ui.button("Set Time") {
+                            self.time_val = t;
+                            unsafe { self.write_value(2, self.time_val, false); }
+                        }
+                        ui.unindent();
+                        
+                        ui.new_line();
+                    }
+
+                    // Information Section
+                    if ui.collapsing_header("Information", hudhook::imgui::TreeNodeFlags::DEFAULT_OPEN) {
+                        ui.text_colored([0.6, 0.6, 0.6, 1.0], &format!("Version: {}", VERSION));
+                        ui.text_colored([0.6, 0.6, 0.6, 1.0], "Repository:");
+                        ui.text_colored([0.4, 0.6, 1.0, 1.0], GITHUB_REPO);
+                    }
                 });
         }
     }
