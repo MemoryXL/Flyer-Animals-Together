@@ -2,12 +2,14 @@ use hudhook::hooks::dx11::ImguiDx11Hooks;
 use hudhook::ImguiRenderLoop;
 use hudhook::imgui::{Condition, Ui};
 use std::time::{Duration, Instant};
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_RSHIFT, VK_ESCAPE, VK_UP, VK_DOWN};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_RSHIFT, VK_ESCAPE};
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
 use windows::Win32::System::Threading::GetCurrentProcessId;
 
 mod memory;
+mod config;
 use memory::Memory;
+use config::Config;
 
 const VERSION: &str = "v1.0.1";
 const GITHUB_REPO: &str = "https://github.com/MemoryXL/Flyer-Animals-Together";
@@ -54,6 +56,7 @@ pub struct Tool {
 
 impl Default for Tool {
     fn default() -> Self {
+        let config = Config::load();
         Self {
             notifications: vec![
                 Notification {
@@ -66,12 +69,12 @@ impl Default for Tool {
             height_val: 0.0,
             y_velocity_val: 0.0,
             time_val: 0.0,
-            y_velocity_up_val: 10.0,
-            y_velocity_down_val: -8.0,
+            y_velocity_up_val: config.y_velocity_up_val,
+            y_velocity_down_val: config.y_velocity_down_val,
             time_locked: false,
-            notifications_enabled: true,
-            key_y_velocity_up: VK_UP.0 as i32,
-            key_y_velocity_down: VK_DOWN.0 as i32,
+            notifications_enabled: config.notifications_enabled,
+            key_y_velocity_up: config.key_y_velocity_up,
+            key_y_velocity_down: config.key_y_velocity_down,
             waiting_for_key_up: false,
             waiting_for_key_down: false,
             was_up_pressed: false,
@@ -149,6 +152,8 @@ impl Tool {
 
     fn get_key_name(vk: i32) -> String {
         match vk {
+            0x21 => "PGUP".to_string(),
+            0x22 => "PGDN".to_string(),
             0x26 => "UP".to_string(),
             0x28 => "DOWN".to_string(),
             0x25 => "LEFT".to_string(),
@@ -165,6 +170,17 @@ impl Tool {
             vk if (0x41..=0x5A).contains(&vk) => format!("{}", (vk as u8 as char)),
             _ => format!("VK_{}", vk),
         }
+    }
+
+    fn save_config(&self) {
+        let config = Config {
+            key_y_velocity_up: self.key_y_velocity_up,
+            key_y_velocity_down: self.key_y_velocity_down,
+            y_velocity_up_val: self.y_velocity_up_val,
+            y_velocity_down_val: self.y_velocity_down_val,
+            notifications_enabled: self.notifications_enabled,
+        };
+        let _ = config.save();
     }
 
     unsafe fn write_value(&mut self, id: u8, value: f32, silent: bool) {
@@ -240,6 +256,7 @@ impl ImguiRenderLoop for Tool {
                              if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
                                  self.key_y_velocity_up = vk;
                                  self.waiting_for_key_up = false;
+                                 self.save_config();
                                  self.add_notification(&format!("Bound UP action to {}", Self::get_key_name(vk)));
                                  break;
                              }
@@ -251,6 +268,7 @@ impl ImguiRenderLoop for Tool {
                              if vk != VK_RSHIFT.0 as i32 && vk != VK_ESCAPE.0 as i32 && vk != 0x01 {
                                  self.key_y_velocity_down = vk;
                                  self.waiting_for_key_down = false;
+                                 self.save_config();
                                  self.add_notification(&format!("Bound DOWN action to {}", Self::get_key_name(vk)));
                                  break;
                              }
@@ -325,7 +343,9 @@ impl ImguiRenderLoop for Tool {
                 .size([400.0, 480.0], Condition::FirstUseEver)
                 .build(|| {
                     ui.text("Press RShift to close");
-                    ui.checkbox("Enable Notifications", &mut self.notifications_enabled);
+                    if ui.checkbox("Enable Notifications", &mut self.notifications_enabled) {
+                        self.save_config();
+                    }
                     ui.separator();
 
                     ui.text("Hotkeys Configuration:");
@@ -339,7 +359,9 @@ impl ImguiRenderLoop for Tool {
                     ui.same_line();
                     ui.text(&format!("UP Action Key: {}", Self::get_key_name(self.key_y_velocity_up)));
                     
-                    ui.input_float("UP Action Value", &mut self.y_velocity_up_val).build();
+                    if ui.input_float("UP Action Value", &mut self.y_velocity_up_val).build() {
+                        self.save_config();
+                    }
                     
                     // DOWN Key Binding
                     let down_label = if self.waiting_for_key_down { "Press any key..." } else { "Bind" };
@@ -350,7 +372,9 @@ impl ImguiRenderLoop for Tool {
                     ui.same_line();
                     ui.text(&format!("DOWN Action Key: {}", Self::get_key_name(self.key_y_velocity_down)));
                     
-                    ui.input_float("DOWN Action Value", &mut self.y_velocity_down_val).build();
+                    if ui.input_float("DOWN Action Value", &mut self.y_velocity_down_val).build() {
+                        self.save_config();
+                    }
                     
                     ui.separator();
 
